@@ -1,0 +1,62 @@
+tell application "Music"
+	set currentTrack to current track
+	if currentTrack is missing value then
+		display alert "No track is currently playing in Apple Music."
+		return
+	end if
+	
+	set playlistName to name of current playlist
+	set trackList to tracks of current playlist
+	set trackCount to count of trackList
+	
+	if trackCount is 0 then
+		display alert "The current playlist has no tracks."
+		return
+	end if
+	
+	-- Prompt user for folder selection
+	set targetFolder to choose folder with prompt "Select where to save the playlist file:"
+	set filePath to (targetFolder as string) & playlistName & ".txt"
+	set fileAlias to POSIX path of filePath
+	
+	-- Build the playlist content
+	set outputText to ""
+	repeat with t in trackList
+		set artistName to artist of t
+		set trackName to name of t
+		set albumName to album of t
+		set trackDurationRaw to duration of t
+		
+		if trackDurationRaw is not missing value then
+			set trackDurationRounded to round trackDurationRaw -- round to nearest whole number
+		else
+			set trackDurationRounded to "Unknown"
+		end if
+		
+		-- Convert track duration to human-readable format
+		set durHours to (trackDurationRounded div 3600) as integer
+		set durMinutes to ((trackDurationRounded mod 3600) div 60) as integer
+		set durSeconds to (trackDurationRounded mod 60) as integer
+		
+		if durHours > 0 then
+			set humanReadableDuration to (durHours as string) & ":" & (durMinutes as string) & ":" & (durSeconds as string)
+		else if durMinutes > 0 then
+			set humanReadableDuration to (durMinutes as string) & ":" & (durSeconds as string)
+		else
+			set humanReadableDuration to (durSeconds as string)
+		end if
+		
+		set formattedLine to "\"" & trackName & "\",\"" & artistName & "\",\"" & albumName & "\",\"" & trackDurationRounded & "\",\"" & humanReadableDuration & "\""
+		set outputText to outputText & formattedLine & return
+	end repeat
+	
+	-- Write to file
+	try
+		set fileRef to open for access filePath with write permission
+		set eof fileRef to 0
+		write outputText to fileRef starting at eof
+		close access fileRef
+	on error errMsg
+		display alert "Error writing file: " & errMsg
+	end try
+end tell
